@@ -1,0 +1,2 @@
+node bots/bot1/bot1.js
+node bots/bot2/bot2.js

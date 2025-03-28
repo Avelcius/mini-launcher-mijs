@@ -1,0 +1,135 @@
+2025-03-28T09:45:50.849Z [error]: node:internal/modules/cjs/loader:1247
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\index.js'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1244:15)
+    at Function._load (node:internal/modules/cjs/loader:1070:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.13.1
+2025-03-28T09:45:55.950Z [error]: node:internal/modules/cjs/loader:1247
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\index.js'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1244:15)
+    at Function._load (node:internal/modules/cjs/loader:1070:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.13.1
+2025-03-28T09:46:12.920Z [info]: Bot 2 запущен
+2025-03-28T09:46:22.941Z [info]: Bot 2: Работает...
+2025-03-28T09:46:32.943Z [info]: Bot 2: Работает...
+2025-03-28T09:46:42.957Z [info]: Bot 2: Работает...
+2025-03-28T09:46:52.961Z [info]: Bot 2: Работает...
+2025-03-28T09:46:52.963Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+2025-03-28T09:46:52.963Z [error]: Node.js v22.13.1
+2025-03-28T09:46:58.387Z [info]: Bot 2 запущен
+2025-03-28T09:47:08.388Z [info]: Bot 2: Работает...
+2025-03-28T09:47:08.390Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+
+Node.js v22.13.1
+2025-03-28T09:47:13.982Z [info]: Bot 2 запущен
+2025-03-28T09:47:23.994Z [info]: Bot 2: Работает...
+2025-03-28T09:47:34.053Z [info]: Bot 2: Работает...
+2025-03-28T09:47:34.056Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+2025-03-28T09:47:34.056Z [error]: Node.js v22.13.1
+2025-03-28T09:47:39.529Z [info]: Bot 2 запущен
+2025-03-28T09:47:49.519Z [info]: Bot 2: Работает...
+2025-03-28T09:47:59.533Z [info]: Bot 2: Работает...
+2025-03-28T09:47:59.534Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+2025-03-28T09:47:59.535Z [error]: Node.js v22.13.1
+2025-03-28T09:48:04.642Z [info]: Bot 2 запущен
+2025-03-28T09:48:14.655Z [info]: Bot 2: Работает...
+2025-03-28T09:48:14.656Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+
+Node.js v22.13.1
+2025-03-28T09:48:19.734Z [info]: Bot 2 запущен
+2025-03-28T09:48:29.743Z [info]: Bot 2: Работает...
+2025-03-28T09:48:29.744Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+
+Node.js v22.13.1
+2025-03-28T09:48:34.824Z [info]: Bot 2 запущен
+2025-03-28T09:48:44.828Z [info]: Bot 2: Работает...
+2025-03-28T09:48:54.866Z [info]: Bot 2: Работает...
+2025-03-28T09:49:04.873Z [info]: Bot 2: Работает...
+2025-03-28T09:49:14.885Z [info]: Bot 2: Работает...
+2025-03-28T09:49:14.888Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+
+Node.js v22.13.1
+2025-03-28T09:49:20.004Z [info]: Bot 2 запущен
+2025-03-28T09:49:30.011Z [info]: Bot 2: Работает...
+2025-03-28T09:49:40.027Z [info]: Bot 2: Работает...
+2025-03-28T09:49:40.029Z [error]: C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6
+    throw new Error('Bot 2 крашнулся!');
+    ^
+
+Error: Bot 2 крашнулся!
+    at Timeout._onTimeout (C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\bot2.js:6:11)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+
+Node.js v22.13.1
+2025-03-28T09:49:45.232Z [info]: Bot 2 запущен

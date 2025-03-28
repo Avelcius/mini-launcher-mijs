@@ -1,0 +1,77 @@
+2025-03-28T09:45:50.618Z [info]: [bot1] Запущен
+2025-03-28T09:45:50.651Z [info]: [bot2] Запущен
+2025-03-28T09:45:50.804Z [error]: [bot1] [ERROR] node:internal/modules/cjs/loader:1247
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\Avelc\Desktop\launcher mijs\bots\bot1\index.js'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1244:15)
+    at Function._load (node:internal/modules/cjs/loader:1070:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.13.1
+2025-03-28T09:45:50.839Z [info]: [bot1] Завершён с кодом 1
+2025-03-28T09:45:50.841Z [warn]: [bot1] Крашнулся, перезапускаю...
+2025-03-28T09:45:50.847Z [error]: [bot2] [ERROR] node:internal/modules/cjs/loader:1247
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\index.js'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1244:15)
+    at Function._load (node:internal/modules/cjs/loader:1070:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.13.1
+2025-03-28T09:45:50.859Z [info]: [bot2] Завершён с кодом 1
+2025-03-28T09:45:50.860Z [warn]: [bot2] Крашнулся, перезапускаю...
+2025-03-28T09:45:55.851Z [info]: [bot1] Запущен
+2025-03-28T09:45:55.870Z [info]: [bot2] Запущен
+2025-03-28T09:45:55.936Z [error]: [bot1] [ERROR] node:internal/modules/cjs/loader:1247
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\Avelc\Desktop\launcher mijs\bots\bot1\index.js'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1244:15)
+    at Function._load (node:internal/modules/cjs/loader:1070:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.13.1
+2025-03-28T09:45:55.948Z [error]: [bot2] [ERROR] node:internal/modules/cjs/loader:1247
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\Avelc\Desktop\launcher mijs\bots\bot2\index.js'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1244:15)
+    at Function._load (node:internal/modules/cjs/loader:1070:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.13.1
+2025-03-28T09:45:55.951Z [info]: [bot1] Завершён с кодом 1
+2025-03-28T09:45:55.951Z [warn]: [bot1] Крашнулся, перезапускаю...
+2025-03-28T09:45:55.955Z [info]: [bot2] Завершён с кодом 1
+2025-03-28T09:45:55.955Z [warn]: [bot2] Крашнулся, перезапускаю...
+2025-03-28T09:45:58.183Z [info]: Получен SIGINT, завершаю работу...
