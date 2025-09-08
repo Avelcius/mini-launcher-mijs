@@ -8,6 +8,29 @@ const app = new Hono();
 // We need CORS so the frontend (on a different domain) can call the API
 app.use('/api/*', cors());
 
+// Endpoint for the frontend to signal that it is active
+app.post('/api/heartbeat', async (c) => {
+  try {
+    // Set a key that expires in 20 seconds.
+    // The frontend will send a heartbeat every 10 seconds to keep this key alive.
+    await STATUS_KV.put('frontend_active', 'true', { expirationTtl: 20 });
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, message: 'Failed to set heartbeat', error: error.message }, 500);
+  }
+});
+
+// Endpoint for the launcher to check if it should send data
+app.get('/api/should_send_status', async (c) => {
+  try {
+    const isActive = await STATUS_KV.get('frontend_active');
+    return c.json({ shouldSend: !!isActive });
+  } catch (error) {
+    // In case of error, default to not sending to be safe.
+    return c.json({ shouldSend: false, error: error.message }, 500);
+  }
+});
+
 // Endpoint for the launcher to post status updates
 app.post('/api/status', async (c) => {
   try {

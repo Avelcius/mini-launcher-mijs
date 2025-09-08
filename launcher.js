@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const pidusage = require('pidusage');
 const http = require('http');
 const https = require('https');
+const fetch = require('node-fetch');
 
 // Загружаем переменные окружения из .env файла
 dotenv.config();
@@ -151,89 +152,61 @@ function loadBots() {
 // Функция отправки статуса
 async function sendBotsStatus() {
   const apiUrl = process.env.API_URL;
-  const hostId = process.env.HOST_ID || 'unknown-host';
+  if (!apiUrl) return;
 
-  if (!apiUrl) {
-    return; // Не отправляем статус, если URL не указан
+  // 1. Check if we should send status
+  try {
+    const checkUrl = new URL(apiUrl);
+    checkUrl.pathname = '/api/should_send_status'; // Assume same host, different path
+    const response = await fetch(checkUrl.toString());
+    const data = await response.json();
+    if (!data.shouldSend) {
+      logger.info('Панель неактивна, пропускаю отправку статуса.');
+      return;
+    }
+  } catch (error) {
+    logger.error(`Не удалось проверить статус активности панели: ${error.message}`);
+    return; // Don't proceed if we can't check
   }
 
+  // 2. If yes, proceed with collecting and sending data
+  const hostId = process.env.HOST_ID || 'unknown-host';
   const botStatusPromises = Object.keys(processes).map(async (botName) => {
     const botInfo = processes[botName];
     if (botInfo.status !== 'running' || !botInfo.process.pid) {
-      return {
-        name: botName,
-        username: botInfo.env.BOT_USERNAME || null,
-        status: botInfo.status,
-        pid: null,
-        cpu: 0,
-        memory: 0,
-        uptime: 0,
-      };
+      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: null, cpu: 0, memory: 0, uptime: 0 };
     }
-
     try {
       const stats = await pidusage(botInfo.process.pid);
-      return {
-        name: botName,
-        username: botInfo.env.BOT_USERNAME || null,
-        status: botInfo.status,
-        pid: botInfo.process.pid,
-        cpu: stats.cpu,
-        memory: stats.memory,
-        uptime: Math.round((Date.now() - botInfo.startTime) / 1000),
-      };
+      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: botInfo.process.pid, cpu: stats.cpu, memory: stats.memory, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
     } catch (error) {
       logger.warn(`Не удалось получить статистику для ${botName} (PID: ${botInfo.process.pid}): ${error.message}`);
-      return {
-        name: botName,
-        username: botInfo.env.BOT_USERNAME || null,
-        status: 'error',
-        pid: botInfo.process.pid,
-        cpu: 0,
-        memory: 0,
-        uptime: Math.round((Date.now() - botInfo.startTime) / 1000),
-      };
+      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: 'error', pid: botInfo.process.pid, cpu: 0, memory: 0, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
     }
   });
 
   const bots = await Promise.all(botStatusPromises);
+  if (bots.length === 0) return;
 
-  // Не отправляем, если нет активных ботов
-  if (bots.length === 0) {
-    return;
-  }
-
-  const payload = {
-    hostId: hostId,
-    bots: bots,
-  };
+  const payload = { hostId: hostId, bots: bots };
   const postData = JSON.stringify(payload);
 
   try {
-    const url = new URL(apiUrl);
+    const postUrl = new URL(apiUrl); // The original URL for posting
     const options = {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname,
+      hostname: postUrl.hostname,
+      port: postUrl.port,
+      path: postUrl.pathname,
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-      },
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
     };
-
-    const transport = url.protocol === 'https:' ? https : http;
+    const transport = postUrl.protocol === 'https:' ? https : http;
     const req = transport.request(options, (res) => {
       logger.info(`Статус для хоста ${hostId} отправлен. Код ответа сервера: ${res.statusCode}`);
-      res.on('data', (d) => {
-        // Можно логировать ответ сервера, если нужно
-      });
     });
-
     req.on('error', (error) => {
       logger.error(`Ошибка при отправке статуса для хоста ${hostId}: ${error.message}`);
     });
-
     req.write(postData);
     req.end();
   } catch (error) {

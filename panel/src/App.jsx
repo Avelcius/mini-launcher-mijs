@@ -40,7 +40,6 @@ const lilacTheme = createTheme({
   },
 });
 
-
 // Helper function to format uptime from seconds to a human-readable string
 const formatUptime = (seconds) => {
   if (seconds < 60) return `${seconds}s`;
@@ -84,10 +83,24 @@ function App() {
       }
     };
 
-    fetchData(); // Fetch immediately on component mount
-    const interval = setInterval(fetchData, 5000); // Fetch every 5 seconds
+    const sendHeartbeat = async () => {
+      try {
+        await fetch('/api/heartbeat', { method: 'POST' });
+      } catch (e) {
+        console.error("Failed to send heartbeat:", e);
+      }
+    };
 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
+    fetchData();
+    sendHeartbeat();
+
+    const dataInterval = setInterval(fetchData, 5000);
+    const heartbeatInterval = setInterval(sendHeartbeat, 10000);
+
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(heartbeatInterval);
+    };
   }, []);
 
   return (
