@@ -2,6 +2,13 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const winston = require('winston');
+const dotenv = require('dotenv');
+const pidusage = require('pidusage');
+const http = require('http');
+const https = require('https');
+
+// Загружаем переменные окружения из .env файла
+dotenv.config();
 
 // Настройка логирования для лаунчера
 const logger = winston.createLogger({
@@ -18,12 +25,28 @@ const logger = winston.createLogger({
   ],
 });
 
-// Хранилище процессов
+// Хранилище процессов, теперь хранит больше информации
 const processes = {};
 
 // Функция для запуска бота
 function startBot(command, botName) {
   const [cmd, ...args] = command.split(' ');
+  let botEnv = {};
+
+  // Ищем путь к скрипту бота, чтобы найти его директорию
+  const botScriptPath = args.find(arg => arg.endsWith('.js'));
+  if (botScriptPath) {
+    const botDir = path.dirname(botScriptPath);
+    const envPath = path.join(__dirname, botDir, '.env');
+    if (fs.existsSync(envPath)) {
+      try {
+        botEnv = dotenv.parse(fs.readFileSync(envPath));
+        logger.info(`[${botName}] Загружен .env файл из ${envPath}`);
+      } catch (error) {
+        logger.error(`[${botName}] Ошибка при чтении .env файла из ${envPath}: ${error.message}`);
+      }
+    }
+  }
 
   // Создание логгера для бота
   const botLogger = winston.createLogger({
@@ -39,36 +62,53 @@ function startBot(command, botName) {
     ],
   });
 
-  const process = spawn(cmd, args);
+  const childProcess = spawn(cmd, args, {
+    env: {
+      ...process.env,
+      ...botEnv,
+    },
+  });
+
+  // Сохраняем информацию о процессе
+  processes[botName] = {
+    process: childProcess,
+    command: command,
+    startTime: Date.now(),
+    status: 'running',
+    env: botEnv, // Сохраняем переменные окружения бота
+  };
+
+  logger.info(`[${botName}] Запущен с PID ${childProcess.pid}`);
 
   // Перенаправление вывода бота
-  process.stdout.on('data', (data) => {
+  childProcess.stdout.on('data', (data) => {
     const output = data.toString().trim();
     logger.info(`[${botName}] ${output}`);
     botLogger.info(output);
   });
 
-  process.stderr.on('data', (data) => {
+  childProcess.stderr.on('data', (data) => {
     const output = data.toString().trim();
     logger.error(`[${botName}] [ERROR] ${output}`);
     botLogger.error(output);
   });
 
-  process.on('close', (code) => {
+  childProcess.on('close', (code) => {
     logger.info(`[${botName}] Завершён с кодом ${code}`);
-    delete processes[botName];
 
     // Перезапуск, если бот крашнулся (код завершения не 0)
     if (code !== 0) {
+      if (processes[botName]) {
+        processes[botName].status = 'restarting';
+      }
       logger.warn(`[${botName}] Крашнулся, перезапускаю...`);
       setTimeout(() => {
         startBot(command, botName);
       }, 5000); // Задержка 5 секунд перед перезапуском
+    } else {
+      delete processes[botName];
     }
   });
-
-  processes[botName] = process;
-  logger.info(`[${botName}] Запущен`);
 }
 
 // Чтение команд из start.txt
@@ -79,15 +119,126 @@ function loadBots() {
     process.exit(1);
   }
 
-  const commands = fs.readFileSync(startFile, 'utf8')
+  const lines = fs.readFileSync(startFile, 'utf8')
     .split('\n')
     .map(line => line.trim())
-    .filter(line => line && !line.startsWith('#')); // Игнорируем пустые строки и комментарии
+    .filter(line => line && !line.startsWith('#'));
 
-  commands.forEach((command, index) => {
-    const botName = `bot${index + 1}`; // Имя бота по номеру (можно улучшить, извлекая из команды)
-    startBot(command, botName);
+  lines.forEach((line) => {
+    let botName;
+    let command = line;
+
+    const nameMatch = line.match(/^\s*\(([^)]+)\)\s*(.*)/);
+    if (nameMatch) {
+      botName = nameMatch[1];
+      command = nameMatch[2].trim();
+    } else {
+      const pathMatch = line.match(/bots\/([^/]+)\//);
+      if (pathMatch) {
+        botName = pathMatch[1];
+      } else {
+        logger.warn(`Не удалось извлечь имя для команды "${line}". Используется случайное имя.`);
+        botName = `bot-${Math.random().toString(36).substring(7)}`;
+      }
+    }
+
+    if (command) {
+      startBot(command, botName);
+    }
   });
+}
+
+// Функция отправки статуса
+async function sendBotsStatus() {
+  const apiUrl = process.env.API_URL;
+  const hostId = process.env.HOST_ID || 'unknown-host';
+
+  if (!apiUrl) {
+    return; // Не отправляем статус, если URL не указан
+  }
+
+  const botStatusPromises = Object.keys(processes).map(async (botName) => {
+    const botInfo = processes[botName];
+    if (botInfo.status !== 'running' || !botInfo.process.pid) {
+      return {
+        name: botName,
+        username: botInfo.env.BOT_USERNAME || null,
+        status: botInfo.status,
+        pid: null,
+        cpu: 0,
+        memory: 0,
+        uptime: 0,
+      };
+    }
+
+    try {
+      const stats = await pidusage(botInfo.process.pid);
+      return {
+        name: botName,
+        username: botInfo.env.BOT_USERNAME || null,
+        status: botInfo.status,
+        pid: botInfo.process.pid,
+        cpu: stats.cpu,
+        memory: stats.memory,
+        uptime: Math.round((Date.now() - botInfo.startTime) / 1000),
+      };
+    } catch (error) {
+      logger.warn(`Не удалось получить статистику для ${botName} (PID: ${botInfo.process.pid}): ${error.message}`);
+      return {
+        name: botName,
+        username: botInfo.env.BOT_USERNAME || null,
+        status: 'error',
+        pid: botInfo.process.pid,
+        cpu: 0,
+        memory: 0,
+        uptime: Math.round((Date.now() - botInfo.startTime) / 1000),
+      };
+    }
+  });
+
+  const bots = await Promise.all(botStatusPromises);
+
+  // Не отправляем, если нет активных ботов
+  if (bots.length === 0) {
+    return;
+  }
+
+  const payload = {
+    hostId: hostId,
+    bots: bots,
+  };
+  const postData = JSON.stringify(payload);
+
+  try {
+    const url = new URL(apiUrl);
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData),
+      },
+    };
+
+    const transport = url.protocol === 'https:' ? https : http;
+    const req = transport.request(options, (res) => {
+      logger.info(`Статус для хоста ${hostId} отправлен. Код ответа сервера: ${res.statusCode}`);
+      res.on('data', (d) => {
+        // Можно логировать ответ сервера, если нужно
+      });
+    });
+
+    req.on('error', (error) => {
+      logger.error(`Ошибка при отправке статуса для хоста ${hostId}: ${error.message}`);
+    });
+
+    req.write(postData);
+    req.end();
+  } catch (error) {
+    logger.error(`Неверный URL для отправки статуса: ${apiUrl}`);
+  }
 }
 
 // Создание директории для логов, если её нет
@@ -98,11 +249,19 @@ if (!fs.existsSync('logs')) {
 // Запуск ботов
 loadBots();
 
+// Запуск периодической отправки статуса
+const statusInterval = (parseInt(process.env.STATUS_INTERVAL, 10) || 10) * 1000;
+if (process.env.API_URL) {
+  setInterval(sendBotsStatus, statusInterval);
+  logger.info(`Отправка статуса настроена на каждые ${statusInterval / 1000} секунд на адрес ${process.env.API_URL}.`);
+}
+
+
 // Обработка graceful shutdown
 process.on('SIGINT', () => {
   logger.info('Получен SIGINT, завершаю работу...');
   for (const botName in processes) {
-    processes[botName].kill();
+    processes[botName].process.kill();
   }
   process.exit(0);
 });
@@ -110,7 +269,7 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   logger.info('Получен SIGTERM, завершаю работу...');
   for (const botName in processes) {
-    processes[botName].kill();
+    processes[botName].process.kill();
   }
   process.exit(0);
 });
