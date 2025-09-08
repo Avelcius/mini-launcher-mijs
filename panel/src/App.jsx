@@ -40,6 +40,7 @@ const lilacTheme = createTheme({
   },
 });
 
+
 // Helper function to format uptime from seconds to a human-readable string
 const formatUptime = (seconds) => {
   if (seconds < 60) return `${seconds}s`;
