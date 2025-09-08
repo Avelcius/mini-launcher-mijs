@@ -4,9 +4,8 @@ const path = require('path');
 const winston = require('winston');
 const dotenv = require('dotenv');
 const pidusage = require('pidusage');
-const http = require('http');
-const https = require('https');
-const fetch = require('node-fetch');
+const express = require('express');
+const cors = require('cors');
 
 // Загружаем переменные окружения из .env файла
 dotenv.config();
@@ -149,72 +148,43 @@ function loadBots() {
   });
 }
 
-// Функция отправки статуса
-async function sendBotsStatus() {
-  const apiUrl = process.env.API_URL;
-  if (!apiUrl) return;
+// --- API СЕРВЕР ---
 
-  // 1. Check if we should send status
+const app = express();
+const port = process.env.PORT || 8080;
+
+// Включаем CORS для всех запросов.
+app.use(cors());
+
+app.get('/status', async (req, res) => {
   try {
-    const checkUrl = new URL(apiUrl);
-    checkUrl.pathname = '/api/should_send_status'; // Assume same host, different path
-    const response = await fetch(checkUrl.toString());
-    const data = await response.json();
-    if (!data.shouldSend) {
-      logger.info('Панель неактивна, пропускаю отправку статуса.');
-      return;
-    }
-  } catch (error) {
-    logger.error(`Не удалось проверить статус активности панели: ${error.message}`);
-    return; // Don't proceed if we can't check
-  }
-
-  // 2. If yes, proceed with collecting and sending data
-  const hostId = process.env.HOST_ID || 'unknown-host';
-  const botStatusPromises = Object.keys(processes).map(async (botName) => {
-    const botInfo = processes[botName];
-    if (botInfo.status !== 'running' || !botInfo.process.pid) {
-      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: null, cpu: 0, memory: 0, uptime: 0 };
-    }
-    try {
-      const stats = await pidusage(botInfo.process.pid);
-      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: botInfo.process.pid, cpu: stats.cpu, memory: stats.memory, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
-    } catch (error) {
-      logger.warn(`Не удалось получить статистику для ${botName} (PID: ${botInfo.process.pid}): ${error.message}`);
-      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: 'error', pid: botInfo.process.pid, cpu: 0, memory: 0, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
-    }
-  });
-
-  const bots = await Promise.all(botStatusPromises);
-  if (bots.length === 0) return;
-
-  const payload = { hostId: hostId, bots: bots };
-  const postData = JSON.stringify(payload);
-
-  try {
-    const postUrl = new URL(apiUrl); // The original URL for posting
-    const options = {
-      hostname: postUrl.hostname,
-      port: postUrl.port,
-      path: postUrl.pathname,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
-    };
-    const transport = postUrl.protocol === 'https:' ? https : http;
-    const req = transport.request(options, (res) => {
-      logger.info(`Статус для хоста ${hostId} отправлен. Код ответа сервера: ${res.statusCode}`);
+    const botStatusPromises = Object.keys(processes).map(async (botName) => {
+      const botInfo = processes[botName];
+      if (botInfo.status !== 'running' || !botInfo.process.pid) {
+        return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: null, cpu: 0, memory: 0, uptime: 0 };
+      }
+      try {
+        const stats = await pidusage(botInfo.process.pid);
+        return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: botInfo.process.pid, cpu: stats.cpu, memory: stats.memory, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
+      } catch (error) {
+        logger.warn(`Не удалось получить статистику для ${botName} (PID: ${botInfo.process.pid}): ${error.message}`);
+        return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: 'error', pid: botInfo.process.pid, cpu: 0, memory: 0, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
+      }
     });
-    req.on('error', (error) => {
-      logger.error(`Ошибка при отправке статуса для хоста ${hostId}: ${error.message}`);
-    });
-    req.write(postData);
-    req.end();
-  } catch (error) {
-    logger.error(`Неверный URL для отправки статуса: ${apiUrl}`);
-  }
-}
 
-// Создание директории для логов, если её нет
+    const bots = await Promise.all(botStatusPromises);
+    // В новой архитектуре мы возвращаем только ботов с этого хоста.
+    // hostId будет добавлен на стороне фронтенда.
+    res.json(bots);
+  } catch (error) {
+    logger.error(`Ошибка при сборе статуса: ${error.message}`);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// --- КОНЕЦ API СЕРВERA ---
+
+// Создание директории для логов, если она не существует
 if (!fs.existsSync('logs')) {
   fs.mkdirSync('logs');
 }
@@ -222,19 +192,18 @@ if (!fs.existsSync('logs')) {
 // Запуск ботов
 loadBots();
 
-// Запуск периодической отправки статуса
-const statusInterval = (parseInt(process.env.STATUS_INTERVAL, 10) || 10) * 1000;
-if (process.env.API_URL) {
-  setInterval(sendBotsStatus, statusInterval);
-  logger.info(`Отправка статуса настроена на каждые ${statusInterval / 1000} секунд на адрес ${process.env.API_URL}.`);
-}
-
+// Запуск API сервера
+app.listen(port, () => {
+  logger.info(`API сервера запущен на порту ${port}`);
+});
 
 // Обработка graceful shutdown
 process.on('SIGINT', () => {
   logger.info('Получен SIGINT, завершаю работу...');
   for (const botName in processes) {
-    processes[botName].process.kill();
+    if (processes[botName] && processes[botName].process) {
+      processes[botName].process.kill();
+    }
   }
   process.exit(0);
 });
@@ -242,7 +211,9 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   logger.info('Получен SIGTERM, завершаю работу...');
   for (const botName in processes) {
-    processes[botName].process.kill();
+    if (processes[botName] && processes[botName].process) {
+      processes[botName].process.kill();
+    }
   }
   process.exit(0);
 });

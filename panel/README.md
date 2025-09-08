@@ -1,88 +1,67 @@
 # Status Panel
 
-This directory contains a web panel to display the status of the bots managed by the launcher. It's a full-stack application designed to be deployed on Cloudflare.
+This directory contains a web panel to display the status of the bots managed by the launcher. It is a **frontend-only** application that fetches data directly from one or more running `launcher.js` instances.
 
 The stack is:
-- **Backend:** Cloudflare Worker (using Hono)
 - **Frontend:** React (using Vite and Material-UI)
-- **Storage:** Cloudflare KV
+- **Backend:** The `launcher.js` script itself acts as the API server for each host.
 
 ---
 
-## How to Set Up and Deploy
+## How to Set Up and Use
 
 ### 1. Prerequisites
 
-- You need [Node.js](https://nodejs.org/) installed on your machine.
-- You need a [Cloudflare account](https://dash.cloudflare.com/sign-up).
-- You need to have the Cloudflare CLI, `wrangler`, installed and configured. If you don't have it, run `npm install -g wrangler` and then `wrangler login`.
+- You need [Node.js](https://nodejs.org/) installed on your machine to run the launcher and the panel's development server.
+- You need one or more instances of the `launcher.js` script running on servers accessible from your browser.
 
-### 2. Backend Setup: Create KV Namespace
+### 2. Launcher Setup
 
-The backend worker uses Cloudflare's KV store to save the latest status received from the launcher.
+For each server where you run the launcher:
 
-1.  **Create a KV Namespace:** In your terminal, run the following command. Give your namespace a descriptive name.
+1.  **Configure `.env`:** Make sure the root `.env` file for the launcher has a `PORT` variable set (e.g., `PORT=8080`).
+2.  **Firewall:** You must open the specified port in your server's firewall so that your browser can connect to it.
+3.  **CORS:** The launcher is configured with a permissive `cors` policy (`app.use(cors())`). For production, you may want to restrict this to only allow requests from the domain where you host the panel.
+4.  **Run:** Start the launcher with `node launcher.js`.
+
+### 3. Panel Setup
+
+1.  **Configure Hosts:**
+    - Open the `panel/public/hosts.json` file.
+    - In the `hosts` array, list the full URL for each of your running launcher APIs.
+    - **Example `hosts.json`:**
+      ```json
+      {
+        "hosts": [
+          "http://192.168.1.10:8080",
+          "http://my-server.example.com:8080"
+        ]
+      }
+      ```
+
+2.  **Install Dependencies:**
+    From within the `panel/` directory, run:
     ```sh
-    wrangler kv:namespace create "STATUS_KV"
+    npm install
     ```
-2.  **Update `wrangler.toml`:** The command above will output something like this:
+
+3.  **Run in Development Mode:**
+    From within the `panel/` directory, run:
+    ```sh
+    npm run dev
     ```
-    🌀 Creating namespace "STATUS_KV"
-    ✨ Success!
-    Add the following to your wrangler.toml:
-    [[kv_namespaces]]
-    binding = "STATUS_KV"
-    id = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
-    ```
-    Copy the `[[kv_namespaces]]` block and paste it into your `panel/wrangler.toml` file, replacing the placeholder that's already there. You'll also need a `preview_id` for local development, which you can get by running `wrangler kv:namespace create "STATUS_KV" --preview`.
-
-### 3. Local Development
-
-To run both the frontend and backend locally for testing, you need to run two commands in two separate terminals from the `panel/` directory.
-
-- **Terminal 1: Start the Backend Worker**
-  ```sh
-  cd panel
-  wrangler dev
-  ```
-  This will start the worker, typically on port `8787`.
-
-- **Terminal 2: Start the Frontend Dev Server**
-  ```sh
-  cd panel
-  npm run dev # This is a standard Vite command, we need to add it to package.json
-  ```
-  This will start the React app, typically on port `5173`. The `vite.config.js` is already configured to proxy API requests to the worker on port `8787`.
-
-*Note: I will add the `dev` script to `package.json` as part of this process.*
+    This will start the local development server (usually on port 5173) and you can open the URL in your browser. It will connect to the launcher instances defined in `hosts.json`.
 
 ### 4. Deployment
 
-1.  **Deploy the Worker:**
-    From the `panel/` directory, run:
-    ```sh
-    wrangler deploy
-    ```
-    This will deploy your worker to a `*.workers.dev` subdomain. Note the URL of your deployed worker.
+The panel is a static site. You can deploy it to any static hosting service, such as Cloudflare Pages, Vercel, or Netlify.
 
-2.  **Configure the Launcher:**
-    - Open the root `.env` file for the launcher.
-    - Set `API_URL` to the URL of your deployed worker, making sure to append the `/api/status` path.
-    - Example: `API_URL=https://status-panel-worker.your-username.workers.dev/api/status`
-
-3.  **Build the Frontend:**
-    From the `panel/` directory, run:
+1.  **Build the Site:**
+    From within the `panel/` directory, run:
     ```sh
-    npm run build # This is a standard Vite command, we need to add it to package.json
+    npm run build
     ```
     This will create a `dist/` directory containing the optimized, static frontend assets.
 
-4.  **Deploy the Frontend to Cloudflare Pages:**
-    - Go to your Cloudflare dashboard.
-    - Navigate to Workers & Pages -> Create application -> Pages -> Upload assets.
-    - Drag and drop the `dist/` folder into the upload box.
-    - Deploy the site.
-
----
-
-After these steps, your launcher will send data to your live worker, and your live Pages site will display that data.
+2.  **Deploy:**
+    Upload the contents of the `dist/` folder to your chosen static hosting provider.

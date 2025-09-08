@@ -70,37 +70,47 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/status');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        // 1. Fetch the list of hosts
+        const hostsResponse = await fetch('/hosts.json');
+        if (!hostsResponse.ok) {
+          throw new Error('Could not load hosts.json. Make sure the file exists in the public directory.');
         }
-        const data = await response.json();
-        setBots(data);
+        const { hosts } = await hostsResponse.json();
+
+        // 2. Fetch status from all hosts in parallel
+        const allHostsPromises = hosts.map(async (hostUrl) => {
+          try {
+            const response = await fetch(`${hostUrl}/status`);
+            if (!response.ok) {
+              // Don't throw, just log and return empty for this host
+              console.error(`Failed to fetch from host ${hostUrl}: ${response.statusText}`);
+              return [];
+            }
+            const hostBots = await response.json();
+            // Augment each bot with the hostId it came from
+            return hostBots.map(bot => ({ ...bot, hostId: new URL(hostUrl).hostname }));
+          } catch (e) {
+            console.error(`Error connecting to host ${hostUrl}:`, e);
+            return []; // Return empty array if a host is down
+          }
+        });
+
+        // 3. Wait for all fetches and aggregate the results
+        const results = await Promise.all(allHostsPromises);
+        const allBots = results.flat(); // Flatten the array of arrays
+
+        setBots(allBots);
         setError(null);
       } catch (e) {
-        console.error("Failed to fetch bot status:", e);
-        setError('Failed to load data. Is the backend worker running?');
+        console.error("A critical error occurred:", e);
+        setError(e.message);
       }
     };
 
-    const sendHeartbeat = async () => {
-      try {
-        await fetch('/api/heartbeat', { method: 'POST' });
-      } catch (e) {
-        console.error("Failed to send heartbeat:", e);
-      }
-    };
+    fetchData(); // Fetch immediately on component mount
+    const interval = setInterval(fetchData, 5000); // Fetch every 5 seconds
 
-    fetchData();
-    sendHeartbeat();
-
-    const dataInterval = setInterval(fetchData, 5000);
-    const heartbeatInterval = setInterval(sendHeartbeat, 10000);
-
-    return () => {
-      clearInterval(dataInterval);
-      clearInterval(heartbeatInterval);
-    };
+    return () => clearInterval(interval); // Cleanup interval on component unmount
   }, []);
 
   return (
@@ -150,7 +160,7 @@ function App() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
-                    No bot data available. Waiting for launcher...
+                    No bot data available. Waiting for launchers...
                   </TableCell>
                 </TableRow>
               )}
