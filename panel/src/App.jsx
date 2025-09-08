@@ -12,7 +12,34 @@ import {
   Typography,
   CssBaseline,
   Container,
+  ThemeProvider,
+  createTheme,
 } from '@mui/material';
+
+// Create a custom pastel lilac theme
+const lilacTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#C8A2C8', // Pastel Lilac
+    },
+    secondary: {
+      main: '#E6E6FA', // Lavender
+    },
+    background: {
+      default: '#F8F8FF', // Ghost White
+    },
+  },
+  components: {
+    MuiTableHead: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#E6E6FA', // Use a light lavender for the table header
+        },
+      },
+    },
+  },
+});
+
 
 // Helper function to format uptime from seconds to a human-readable string
 const formatUptime = (seconds) => {
@@ -64,7 +91,7 @@ function App() {
   }, []);
 
   return (
-    <>
+    <ThemeProvider theme={lilacTheme}>
       <CssBaseline />
       <Container style={{ marginTop: '2rem' }}>
         <Typography variant="h4" component="h1" gutterBottom>
@@ -75,6 +102,7 @@ function App() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Host</TableCell>
                 <TableCell>Name</TableCell>
                 <TableCell>Username</TableCell>
                 <TableCell>Status</TableCell>
@@ -86,7 +114,8 @@ function App() {
             <TableBody>
               {bots.length > 0 ? (
                 bots.map((bot) => (
-                  <TableRow key={bot.name}>
+                  <TableRow key={`${bot.hostId}-${bot.name}`}>
+                    <TableCell>{bot.hostId}</TableCell>
                     <TableCell>{bot.name}</TableCell>
                     <TableCell>
                       {bot.username ? (
@@ -107,7 +136,7 @@ function App() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     No bot data available. Waiting for launcher...
                   </TableCell>
                 </TableRow>
@@ -116,7 +145,7 @@ function App() {
           </Table>
         </TableContainer>
       </Container>
-    </>
+    </ThemeProvider>
   );
 }
 

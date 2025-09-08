@@ -151,11 +151,13 @@ function loadBots() {
 // Функция отправки статуса
 async function sendBotsStatus() {
   const apiUrl = process.env.API_URL;
+  const hostId = process.env.HOST_ID || 'unknown-host';
+
   if (!apiUrl) {
     return; // Не отправляем статус, если URL не указан
   }
 
-  const statusPromises = Object.keys(processes).map(async (botName) => {
+  const botStatusPromises = Object.keys(processes).map(async (botName) => {
     const botInfo = processes[botName];
     if (botInfo.status !== 'running' || !botInfo.process.pid) {
       return {
@@ -181,7 +183,6 @@ async function sendBotsStatus() {
         uptime: Math.round((Date.now() - botInfo.startTime) / 1000),
       };
     } catch (error) {
-      // Процесс мог умереть в момент запроса статистики
       logger.warn(`Не удалось получить статистику для ${botName} (PID: ${botInfo.process.pid}): ${error.message}`);
       return {
         name: botName,
@@ -195,12 +196,18 @@ async function sendBotsStatus() {
     }
   });
 
-  const statuses = await Promise.all(statusPromises);
-  if (statuses.length === 0) {
-    return; // Не отправляем пустой массив
+  const bots = await Promise.all(botStatusPromises);
+
+  // Не отправляем, если нет активных ботов
+  if (bots.length === 0) {
+    return;
   }
 
-  const postData = JSON.stringify(statuses);
+  const payload = {
+    hostId: hostId,
+    bots: bots,
+  };
+  const postData = JSON.stringify(payload);
 
   try {
     const url = new URL(apiUrl);
@@ -217,14 +224,14 @@ async function sendBotsStatus() {
 
     const transport = url.protocol === 'https:' ? https : http;
     const req = transport.request(options, (res) => {
-      logger.info(`Статус отправлен. Код ответа сервера: ${res.statusCode}`);
+      logger.info(`Статус для хоста ${hostId} отправлен. Код ответа сервера: ${res.statusCode}`);
       res.on('data', (d) => {
         // Можно логировать ответ сервера, если нужно
       });
     });
 
     req.on('error', (error) => {
-      logger.error(`Ошибка при отправке статуса: ${error.message}`);
+      logger.error(`Ошибка при отправке статуса для хоста ${hostId}: ${error.message}`);
     });
 
     req.write(postData);
