@@ -1,5 +1,5 @@
 {
   "hosts": [
-    "http://x1.qwertyx.host:26625"
+    "http://127.0.0.1:8080"
   ]
 }

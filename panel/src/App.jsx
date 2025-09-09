@@ -79,18 +79,28 @@ function App() {
 
         // 2. Fetch status from all hosts in parallel
         const allHostsPromises = hosts.map(async (hostUrl) => {
+          const trimmedUrl = hostUrl.trim();
+          if (!trimmedUrl) return []; // Ignore empty host entries in the config
+
+          // Automatically prepend a protocol if no scheme is present
+          let normalizedUrl = trimmedUrl;
+          if (!/^https?:\/\//.test(normalizedUrl)) {
+            // Default to the same protocol as the panel itself to avoid Mixed Content issues.
+            const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
+            normalizedUrl = `${protocol}${normalizedUrl}`;
+          }
+
           try {
-            const response = await fetch(`${hostUrl}/status`);
+            const response = await fetch(`${normalizedUrl}/status`);
             if (!response.ok) {
-              // Don't throw, just log and return empty for this host
-              console.error(`Failed to fetch from host ${hostUrl}: ${response.statusText}`);
+              console.error(`Failed to fetch from host ${normalizedUrl}: ${response.statusText}`);
               return [];
             }
             const hostBots = await response.json();
             // Augment each bot with the hostId it came from
-            return hostBots.map(bot => ({ ...bot, hostId: new URL(hostUrl).hostname }));
+            return hostBots.map(bot => ({ ...bot, hostId: new URL(normalizedUrl).hostname }));
           } catch (e) {
-            console.error(`Error connecting to host ${hostUrl}:`, e);
+            console.error(`Error connecting to host ${normalizedUrl}:`, e);
             return []; // Return empty array if a host is down
           }
         });
