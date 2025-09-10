@@ -1,67 +1,48 @@
-# Status Panel
+# Status Panel Frontend
 
-This directory contains a web panel to display the status of the bots managed by the launcher. It is a **frontend-only** application that fetches data directly from one or more running `launcher.js` instances.
+This directory contains the React-based frontend for the status panel. It is a static site designed to be deployed to a service like Cloudflare Pages or Render Static Sites.
 
-The stack is:
-- **Frontend:** React (using Vite and Material-UI)
-- **Backend:** The `launcher.js` script itself acts as the API server for each host.
+## Functionality
 
----
+- **Displays Status:** It fetches aggregated bot status data from a central backend API and displays it in a table.
+- **Near Real-time:** It polls the backend every 5 seconds for fresh data.
+- **Heartbeat:** It sends a "heartbeat" signal to the backend every 10 seconds to let the backend know that a user is actively viewing the page. This allows the backend to tell the launchers to save resources when no one is watching.
+- **Theming:** It uses Material-UI with a custom pastel lilac theme.
 
-## How to Set Up and Use
+## Configuration
 
-### 1. Prerequisites
+The panel needs to know the URL of your deployed central backend server.
 
-- You need [Node.js](https://nodejs.org/) installed on your machine to run the launcher and the panel's development server.
-- You need one or more instances of the `launcher.js` script running on servers accessible from your browser.
+1.  Create a `.env` file in this `panel/` directory (e.g., by copying `.env.example` if it exists).
+2.  In the `.env` file, set the `VITE_API_URL` variable:
+    ```
+    VITE_API_URL=https://your-backend-service.onrender.com
+    ```
+    The `VITE_` prefix is important for the Vite build tool to expose the variable to the frontend code.
 
-### 2. Launcher Setup
+## Local Development
 
-For each server where you run the launcher:
-
-1.  **Configure `.env`:** Make sure the root `.env` file for the launcher has a `PORT` variable set (e.g., `PORT=8080`).
-2.  **Firewall:** You must open the specified port in your server's firewall so that your browser can connect to it.
-3.  **CORS:** The launcher is configured with a permissive `cors` policy (`app.use(cors())`). For production, you may want to restrict this to only allow requests from the domain where you host the panel.
-4.  **Run:** Start the launcher with `node launcher.js`.
-
-### 3. Panel Setup
-
-1.  **Configure Hosts:**
-    - Open the `panel/public/hosts.json` file.
-    - In the `hosts` array, list the full URL for each of your running launcher APIs.
-    - **Example `hosts.json`:**
-      ```json
-      {
-        "hosts": [
-          "http://192.168.1.10:8080",
-          "http://my-server.example.com:8080"
-        ]
-      }
-      ```
-
-2.  **Install Dependencies:**
-    From within the `panel/` directory, run:
+1.  **Run the Backend:** First, make sure your central backend server is running locally (e.g., `cd ../backend && npm start`).
+2.  **Install Dependencies:** From within this `panel/` directory, run:
     ```sh
     npm install
     ```
-
-3.  **Run in Development Mode:**
-    From within the `panel/` directory, run:
+3.  **Run Dev Server:**
     ```sh
     npm run dev
     ```
-    This will start the local development server (usually on port 5173) and you can open the URL in your browser. It will connect to the launcher instances defined in `hosts.json`.
+    This will start the local development server (usually on port 5173). It will connect to the backend API specified in your `panel/.env` file.
 
-### 4. Deployment
+## Deployment
 
-The panel is a static site. You can deploy it to any static hosting service, such as Cloudflare Pages, Vercel, or Netlify.
+The panel is a static site. You can deploy it to any static hosting service.
 
 1.  **Build the Site:**
     From within the `panel/` directory, run:
     ```sh
     npm run build
     ```
-    This will create a `dist/` directory containing the optimized, static frontend assets.
+    This will create a `dist/` directory containing the optimized frontend assets.
 
 2.  **Deploy:**
-    Upload the contents of the `dist/` folder to your chosen static hosting provider.
+    Upload the contents of the `dist/` folder to your chosen static hosting provider (e.g., Cloudflare Pages, Render Static Sites, Vercel, Netlify). You will need to configure your provider to set the `VITE_API_URL` environment variable during the build process.

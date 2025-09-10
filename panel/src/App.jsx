@@ -16,6 +16,10 @@ import {
   createTheme,
 } from '@mui/material';
 
+// The URL for the central backend API.
+// Vite exposes env variables prefixed with VITE_ on `import.meta.env`
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 // Create a custom pastel lilac theme
 const lilacTheme = createTheme({
   palette: {
@@ -33,14 +37,13 @@ const lilacTheme = createTheme({
     MuiTableHead: {
       styleOverrides: {
         root: {
-          backgroundColor: '#E6E6FA', // Use a light lavender for the table header
+          backgroundColor: '#E6E6FA',
         },
       },
     },
   },
 });
 
-// Helper function to format uptime from seconds to a human-readable string
 const formatUptime = (seconds) => {
   if (seconds < 60) return `${seconds}s`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
@@ -49,17 +52,12 @@ const formatUptime = (seconds) => {
   return `${hours}h ${minutes}m`;
 };
 
-// Helper function to determine chip color based on status
 const getStatusChipColor = (status) => {
   switch (status) {
-    case 'running':
-      return 'success';
-    case 'restarting':
-      return 'warning';
-    case 'error':
-      return 'error';
-    default:
-      return 'default';
+    case 'running': return 'success';
+    case 'restarting': return 'warning';
+    case 'error': return 'error';
+    default: return 'default';
   }
 };
 
@@ -70,57 +68,42 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Fetch the list of hosts
-        const hostsResponse = await fetch('/hosts.json');
-        if (!hostsResponse.ok) {
-          throw new Error('Could not load hosts.json. Make sure the file exists in the public directory.');
-        }
-        const { hosts } = await hostsResponse.json();
-
-        // 2. Fetch status from all hosts in parallel
-        const allHostsPromises = hosts.map(async (hostUrl) => {
-          const trimmedUrl = hostUrl.trim();
-          if (!trimmedUrl) return []; // Ignore empty host entries in the config
-
-          // Automatically prepend a protocol if no scheme is present
-          let normalizedUrl = trimmedUrl;
-          if (!/^https?:\/\//.test(normalizedUrl)) {
-            // Default to the same protocol as the panel itself to avoid Mixed Content issues.
-            const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
-            normalizedUrl = `${protocol}${normalizedUrl}`;
-          }
-
-          try {
-            const response = await fetch(`${normalizedUrl}/status`);
-            if (!response.ok) {
-              console.error(`Failed to fetch from host ${normalizedUrl}: ${response.statusText}`);
-              return [];
-            }
-            const hostBots = await response.json();
-            // Augment each bot with the hostId it came from
-            return hostBots.map(bot => ({ ...bot, hostId: new URL(normalizedUrl).hostname }));
-          } catch (e) {
-            console.error(`Error connecting to host ${normalizedUrl}:`, e);
-            return []; // Return empty array if a host is down
-          }
+        const response = await fetch(`${API_URL}/api/status`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        // Sort data by host and then by bot name
+        data.sort((a, b) => {
+          if (a.hostId < b.hostId) return -1;
+          if (a.hostId > b.hostId) return 1;
+          return a.name.localeCompare(b.name);
         });
-
-        // 3. Wait for all fetches and aggregate the results
-        const results = await Promise.all(allHostsPromises);
-        const allBots = results.flat(); // Flatten the array of arrays
-
-        setBots(allBots);
+        setBots(data);
         setError(null);
       } catch (e) {
-        console.error("A critical error occurred:", e);
-        setError(e.message);
+        console.error("Failed to fetch bot status:", e);
+        setError('Failed to load data. Is the backend server running?');
       }
     };
 
-    fetchData(); // Fetch immediately on component mount
-    const interval = setInterval(fetchData, 5000); // Fetch every 5 seconds
+    const sendHeartbeat = async () => {
+      try {
+        await fetch(`${API_URL}/api/heartbeat`, { method: 'POST' });
+      } catch (e) {
+        console.error("Failed to send heartbeat:", e);
+      }
+    };
 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
+    // Initial fetch and heartbeat
+    fetchData();
+    sendHeartbeat();
+
+    const dataInterval = setInterval(fetchData, 5000);
+    const heartbeatInterval = setInterval(sendHeartbeat, 10000);
+
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(heartbeatInterval);
+    };
   }, []);
 
   return (
@@ -159,9 +142,7 @@ function App() {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Chip label={bot.status} color={getStatusChipColor(bot.status)} size="small" />
-                    </TableCell>
+                    <TableCell><Chip label={bot.status} color={getStatusChipColor(bot.status)} size="small" /></TableCell>
                     <TableCell>{bot.cpu ? bot.cpu.toFixed(2) : '0.00'}%</TableCell>
                     <TableCell>{bot.memory ? (bot.memory / 1024 / 1024).toFixed(2) : '0.00'}</TableCell>
                     <TableCell>{formatUptime(bot.uptime)}</TableCell>
@@ -170,7 +151,7 @@ function App() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
-                    No bot data available. Waiting for launchers...
+                    No bot data available. Waiting for launcher...
                   </TableCell>
                 </TableRow>
               )}

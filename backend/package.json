@@ -1,9 +1,10 @@
 {
-  "name": "launcher-mijs",
+  "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "launcher.js",
+  "main": "index.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,9 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "winston": "^3.17.0",
-    "dotenv": "^16.4.5",
-    "pidusage": "^3.0.2",
-    "node-fetch": "^2.7.0"
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
   }
 }
