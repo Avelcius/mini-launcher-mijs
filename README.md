@@ -1,30 +1,84 @@
-# Multi-Host Bot Launcher & Status Panel
+# Лаунчер для ботов
 
-This project contains a system for launching and monitoring Node.js bots across multiple servers. It consists of three main components:
+Это простой лаунчер для запуска и управления несколькими ботами на Node.js. Он автоматически перезапускает ботов в случае сбоя и предоставляет API для мониторинга их состояния.
 
-1.  **Launcher (root directory):** The `launcher.js` script is responsible for running, monitoring, and auto-restarting bot processes defined in `start.txt`. It collects detailed status information (CPU, memory, uptime, etc.) for each bot.
+## Основные возможности
 
-2.  **Backend (`/backend`):** A central Node.js/Express server designed to be deployed on a service like [Render](https://render.com/). It receives status updates from all running launcher instances and serves the aggregated data to the frontend panel. It also includes a "sleep signal" mechanism to tell launchers to reduce their update frequency when no one is viewing the panel, saving resources.
+-   Запуск нескольких ботов, определенных в файле `start.txt`.
+-   Автоматический перезапуск ботов при падении.
+-   Индивидуальные файлы `.env` для каждого бота.
+-   Встроенный API-сервер для получения статуса ботов (PID, CPU, память, время работы).
 
-3.  **Panel (`/panel`):** A React-based single-page application that provides a web interface for viewing the status of all bots from all hosts in a single table. It is designed to be deployed to a static hosting service like Cloudflare Pages or Render Static Sites.
+## Установка
 
-## Architecture Overview
+1.  Клонируйте репозиторий.
+2.  Установите зависимости:
+    ```bash
+    npm install
+    ```
+
+## Настройка
+
+### Добавление ботов
+
+Чтобы добавить нового бота, просто добавьте команду для его запуска в файл `start.txt`. Каждая команда должна быть на новой строке.
+
+**Пример `start.txt`:**
 
 ```
-+----------------+      +------------------+      +-----------------+
-| Launcher Host 1|      |                  |      |                 |
-| (launcher.js)  |----->| Central Backend  |      |  User's Browser |
-+----------------+      | (on Render)      |<-----|  (Panel)        |
-                        | (Express API)    |      |                 |
-+----------------+      |                  |      +-----------------+
-| Launcher Host 2|----->|                  |
-| (launcher.js)  |      +------------------+
-+----------------+
+(main_bot) node bots/bot1/bot1.js
+(worker_bot) node bots/bot2/bot2.js
 ```
 
--   The **Panel** sends a periodic "heartbeat" to the **Backend** to signal that a user is active.
--   The **Launchers** periodically send their status to the **Backend**.
--   The **Backend** checks for a recent heartbeat. If no one is active, it tells the launchers to "sleep" (i.e., send updates less frequently).
--   The **Panel** fetches the latest aggregated data from the **Backend** to display to the user.
+-   `(main_bot)`: Это имя бота, которое будет использоваться в логах и API. Если имя не указано, оно будет сгенерировано автоматически.
+-   `node bots/bot1/bot1.js`: Это команда для запуска бота.
 
-See the `README.md` file in each component's directory for specific setup and deployment instructions.
+### Переменные окружения
+
+Вы можете создать файл `.env` в директории каждого бота (например, `bots/bot1/.env`), чтобы задать для него уникальные переменные окружения. Лаунчер автоматически загрузит их при запуске бота.
+
+## Использование
+
+Для запуска лаунчера выполните команду:
+
+```bash
+node launcher.js
+```
+
+### API для мониторинга
+
+Лаунчер запускает API-сервер для мониторинга состояния ботов.
+
+-   **URL:** `GET /status`
+-   **Порт по умолчанию:** `3000` (можно изменить с помощью переменной окружения `PORT`)
+
+**Пример запроса:**
+
+```bash
+curl http://localhost:3000/status
+```
+
+**Пример ответа:**
+
+```json
+[
+  {
+    "name": "main_bot",
+    "username": "MyBotUsername",
+    "status": "running",
+    "pid": 12345,
+    "cpu": 10.5,
+    "memory": 52428800,
+    "uptime": 3600
+  },
+  {
+    "name": "worker_bot",
+    "username": null,
+    "status": "restarting",
+    "pid": null,
+    "cpu": 0,
+    "memory": 0,
+    "uptime": 0
+  }
+]
+```
