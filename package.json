@@ -14,6 +14,8 @@
     "winston": "^3.17.0",
     "dotenv": "^16.4.5",
     "pidusage": "^3.0.2",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   }
 }

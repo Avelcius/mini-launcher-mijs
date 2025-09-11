@@ -4,7 +4,44 @@ const path = require('path');
 const winston = require('winston');
 const dotenv = require('dotenv');
 const pidusage = require('pidusage');
-// express and cors are removed
+const express = require('express');
+const cors = require('cors');
+
+// Настройка Express API
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/status', async (req, res) => {
+  try {
+    const botStatusPromises = Object.keys(processes).map(async (botName) => {
+      const botInfo = processes[botName];
+      if (botInfo.status !== 'running' || !botInfo.process.pid) {
+        return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: null, cpu: 0, memory: 0, uptime: 0 };
+      }
+      try {
+        const stats = await pidusage(botInfo.process.pid);
+        return {
+          name: botName,
+          username: botInfo.env.BOT_USERNAME || null,
+          status: botInfo.status,
+          pid: botInfo.process.pid,
+          cpu: stats.cpu,
+          memory: stats.memory, // in bytes
+          uptime: Math.round((Date.now() - botInfo.startTime) / 1000) // in seconds
+        };
+      } catch (error) {
+        return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: 'error', pid: botInfo.process.pid, cpu: 0, memory: 0, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
+      }
+    });
+
+    const bots = await Promise.all(botStatusPromises);
+    res.json(bots);
+  } catch (error) {
+    logger.error(`Error getting bot statuses: ${error.message}`);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 // Загружаем переменные окружения из .env файла
 dotenv.config();
@@ -110,80 +147,15 @@ function loadBots() {
   });
 }
 
-// --- Sleep Signal Logic ---
-let statusIntervalMs = (parseInt(process.env.STATUS_INTERVAL, 10) || 10) * 1000;
-let statusIntervalTimer = null;
-let isSleeping = false;
-
-async function sendBotsStatus() {
-  const apiUrl = process.env.API_URL;
-  if (!apiUrl) return;
-
-  const hostId = process.env.HOST_ID || 'unknown-host';
-  const botStatusPromises = Object.keys(processes).map(async (botName) => {
-    const botInfo = processes[botName];
-    if (botInfo.status !== 'running' || !botInfo.process.pid) {
-      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: null, cpu: 0, memory: 0, uptime: 0 };
-    }
-    try {
-      const stats = await pidusage(botInfo.process.pid);
-      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: botInfo.status, pid: botInfo.process.pid, cpu: stats.cpu, memory: stats.memory, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
-    } catch (error) {
-      return { name: botName, username: botInfo.env.BOT_USERNAME || null, status: 'error', pid: botInfo.process.pid, cpu: 0, memory: 0, uptime: Math.round((Date.now() - botInfo.startTime) / 1000) };
-    }
-  });
-
-  const bots = await Promise.all(botStatusPromises);
-  // Send an empty bots array if sleeping, to let the server know this host is still alive
-  // but don't send if there are no processes running at all and not sleeping.
-  if (bots.length === 0 && !isSleeping) return;
-
-  const payload = { hostId, bots };
-
-  try {
-    const response = await fetch(`${apiUrl}/api/status`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server responded with ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (data.action === 'sleep' && !isSleeping) {
-      isSleeping = true;
-      const sleepDuration = (data.duration || 300) * 1000;
-      logger.warn(`Panel inactive. Going to sleep for ${sleepDuration / 1000}s.`);
-      clearInterval(statusIntervalTimer);
-      statusIntervalTimer = setTimeout(() => {
-        logger.info('Waking up and resuming fast polling.');
-        isSleeping = false;
-        startStatusPolling(); // This will call sendBotsStatus immediately
-      }, sleepDuration);
-    }
-  } catch (error) {
-    logger.error(`Error sending status for host ${hostId}: ${error.message}`);
-  }
-}
-
-function startStatusPolling() {
-  if (statusIntervalTimer) clearInterval(statusIntervalTimer);
-  // First poll immediately, then start the interval.
-  sendBotsStatus();
-  statusIntervalTimer = setInterval(sendBotsStatus, statusIntervalMs);
-  logger.info(`Status polling started. Interval: ${statusIntervalMs / 1000}s.`);
-}
-
 // --- Main Execution ---
 if (!fs.existsSync('logs')) fs.mkdirSync('logs');
 
 loadBots();
 
-if (process.env.API_URL) {
-  startStatusPolling();
-}
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  logger.info(`API-сервер запущен и слушает порт ${PORT}`);
+});
 
 process.on('SIGINT', () => {
   logger.info('Received SIGINT, shutting down...');
